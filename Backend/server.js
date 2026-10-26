@@ -6,7 +6,27 @@ const mongoose = require('mongoose')
 
 const app = express()
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'https://idea-hub-web-one.vercel.app/' }))   // your Vite app
+// Origins allowed to call this API. No trailing slashes: the browser's Origin header never has one.
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://idea-hub-web-one.vercel.app',
+  // optional extra origins from the environment, comma-separated
+  ...(process.env.CLIENT_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean),
+]
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // no Origin header = non-browser request (curl, health checks): allow it
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+      return callback(null, false) // browser origin not on the list: no CORS headers sent
+    },
+  })
+)
 app.use(express.json())
 
 // uploaded profile pictures and resumes
