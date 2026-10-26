@@ -6,7 +6,7 @@ const mongoose = require('mongoose')
 
 const app = express()
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }))   // your Vite app
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'https://idea-hub-web-one.vercel.app/' }))   // your Vite app
 app.use(express.json())
 
 // uploaded profile pictures and resumes
