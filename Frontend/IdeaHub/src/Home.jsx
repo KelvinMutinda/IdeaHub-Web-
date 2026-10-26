@@ -72,13 +72,13 @@ export default function Home() {
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  /* ---------- load posts + people from the database ---------- */
+  /* ---------- load projects + people from the database ---------- */
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         const [postsData, peopleData] = await Promise.all([
-          api('/posts', { auth: true }),
+          api('/projects', { auth: true }),
           api('/users?limit=3', { auth: true }).catch(() => []),   // people list is optional
         ])
         if (cancelled) return
@@ -111,7 +111,7 @@ export default function Home() {
   const onLike = async (id) => {
     flipLike(id)
     try {
-      await api(`/posts/${id}/like`, { method: 'POST', auth: true })
+      await api(`/projects/${id}/like`, { method: 'POST', auth: true })
     } catch {
       flipLike(id)
     }
@@ -134,7 +134,7 @@ export default function Home() {
 
     setPosting(true)
     try {
-      const created = await api('/posts', {
+      const created = await api('/projects', {
         method: 'POST',
         auth: true,
         body: {
