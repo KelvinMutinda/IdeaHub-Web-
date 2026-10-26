@@ -13,8 +13,7 @@ import Messenger from './Messenger.jsx'
 import Register from './auth/Register.jsx'
 import Login from './auth/Login.jsx'
 
-/* Blocks everything inside it unless there is a valid (unexpired) session.
-   Sends the user to /login and remembers where they were heading. */
+/
 function RequireAuth() {
   const location = useLocation()
   const [session, setSession] = useState(() => getSession())
