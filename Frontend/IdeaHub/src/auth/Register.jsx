@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api, saveSession } from '../api'
+import { api, clearSession } from '../api'
 import toast, { Toaster } from 'react-hot-toast'
 
 /* Password strength: 0 (empty) – 4 (strong) */
@@ -47,10 +47,14 @@ const Register = () => {
     const data = new FormData(e.target)   // includes the profile picture and resume files
 
     try {
-      const res = await api('/register', { method: 'POST', body: data })
-      saveSession(res, true)               // you are logged in right after registering
-      toast.success('Account created! Welcome to IdeaHub.')
-      setTimeout(() => navigate('/Login'), 1200)
+      await api('/register', { method: 'POST', body: data })
+
+      // Do NOT save a session here. A saved session makes the login page redirect to Home.
+      // Clear any old session too, so /login always opens for the new user.
+      clearSession()
+
+      toast.success('Account created! Please log in to continue.')
+      setTimeout(() => navigate('/login'), 1200)
     } catch (err) {
       setFieldErrors(err.fields || {})
       toast.error(err.message)      // e.g. "An account with this email already exists."
