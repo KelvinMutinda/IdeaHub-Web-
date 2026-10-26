@@ -1,6 +1,7 @@
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://ideahub-web.onrender.com//api'
-
+const RAW_API_URL =
+  import.meta.env.VITE_API_URL || 'https://ideahub-web.onrender.com/api'
+const API_URL = RAW_API_URL.replace(/\/+$/, '')
 
 export const SESSION_DAYS = 2
 const SESSION_MS = SESSION_DAYS * 24 * 60 * 60 * 1000
@@ -9,7 +10,7 @@ export class ApiError extends Error {
   constructor(message, status = 0, fields = null) {
     super(message)
     this.status = status
-    this.fields = fields        
+    this.fields = fields
   }
 }
 
@@ -17,7 +18,7 @@ function readStore(store) {
   const token = store.getItem('token')
   if (!token) return null
   const expiresAt = Number(store.getItem('expiresAt')) || 0
-  if (Date.now() >= expiresAt) return null       
+  if (Date.now() >= expiresAt) return null
   let user = null
   try { user = JSON.parse(store.getItem('user')) } catch {  }
   return { token, user, expiresAt }
@@ -55,7 +56,7 @@ export async function api(path, { method = 'GET', body, auth = false } = {}) {
   const headers = {}
   let payload
   if (body instanceof FormData) {
-    payload = body                                
+    payload = body
   } else if (body) {
     headers['Content-Type'] = 'application/json'
     payload = JSON.stringify(body)
@@ -63,10 +64,15 @@ export async function api(path, { method = 'GET', body, auth = false } = {}) {
   const token = auth ? getToken() : null
   if (token) headers.Authorization = `Bearer ${token}`
 
+  // Make sure exactly one slash sits between the base URL and the path.
+  const url = API_URL + (path.startsWith('/') ? path : '/' + path)
+
   let res
   try {
-    res = await fetch(API_URL + path, { method, headers, body: payload })
-  } catch {
+    res = await fetch(url, { method, headers, body: payload })
+  } catch (err) {
+    // Logs the real reason (CORS, DNS, offline...) so it can be diagnosed in DevTools.
+    console.error('Request failed:', method, url, err)
     throw new ApiError('Cannot reach the server. Check your connection and try again.')
   }
 
