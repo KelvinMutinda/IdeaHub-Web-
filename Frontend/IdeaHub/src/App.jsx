@@ -13,7 +13,7 @@ import Messenger from './Messenger.jsx'
 import Register from './auth/Register.jsx'
 import Login from './auth/Login.jsx'
 
-/
+
 function RequireAuth() {
   const location = useLocation()
   const [session, setSession] = useState(() => getSession())
