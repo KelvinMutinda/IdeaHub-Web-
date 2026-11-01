@@ -1,8 +1,4 @@
-/* ------------------------------------------------------------------
-   routes.js — IdeaHub API: register, login, post project, list projects
-   Mounted in server.js as:  app.use('/api', require('./auth/routes'))
-   Needs in .env:  JWT_SECRET=<long random string>
-   ------------------------------------------------------------------ */
+
 const express = require('express')
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
@@ -17,13 +13,10 @@ if (!JWT_SECRET) throw new Error('JWT_SECRET is missing in your .env file')
 
 const router = express.Router()
 
-/* ============================ MODELS ============================
-   Your own schema files (see models/register.js and models/post.js).
-   This file lives in Backend/auth/, so the models are one folder up. */
+
 const User = require('../models/register')
 const Project = require('../models/post')
 
-/* ============================ HELPERS ============================ */
 const str = (v) => (typeof v === 'string' ? v.trim() : '')
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 const isUrl = (v) => {
@@ -44,7 +37,7 @@ const publicUser = (u) => ({
   profileUrl: u.profile,
 })
 
-/* shaped like the cards in Home.jsx */
+
 const shapeProject = (p, owner) => ({
   id: p._id,
   author: {
@@ -69,8 +62,8 @@ const removeFiles = (files) => {
   Object.values(files || {}).flat().forEach((f) => fs.unlink(f.path, () => {}))
 }
 
-/* ============================ UPLOADS ============================ */
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads')   // Backend/uploads (same folder server.js serves)
+
+const UPLOAD_DIR = path.join(__dirname, '..', 'uploads')   
 fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -93,7 +86,7 @@ const upload = multer({
   },
 }).fields([{ name: 'profile', maxCount: 1 }, { name: 'resume', maxCount: 1 }])
 
-/* runs multer and turns its errors into normal JSON errors */
+
 const handleUpload = (req, res, next) =>
   upload(req, res, (err) => {
     if (!err) return next()
@@ -108,7 +101,6 @@ const handleUpload = (req, res, next) =>
     return fail(res, 400, 'UPLOAD_ERROR', 'Could not upload your files.')
   })
 
-/* ============================ AUTH MIDDLEWARE ============================ */
 const requireAuth = async (req, res, next) => {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : ''
@@ -124,9 +116,6 @@ const requireAuth = async (req, res, next) => {
   }
 }
 
-/* ============================ POST /api/register ============================
-   multipart/form-data: firstname, lastname, email, phone, occupation,
-   skills (comma separated), bio, password, profile (image), resume (pdf/doc)  */
 router.post('/register', handleUpload, async (req, res, next) => {
   try {
     const b = req.body || {}
@@ -176,22 +165,19 @@ router.post('/register', handleUpload, async (req, res, next) => {
   }
 })
 
-/* ============================ POST /api/login ============================
-   JSON: { email, password }  → needed so users can post projects           */
+
 router.post('/login', async (req, res, next) => {
   try {
     const email = str(req.body?.email).toLowerCase()
     const password = typeof req.body?.password === 'string' ? req.body.password : ''
     const user = email && password ? await User.findOne({ email }) : null
     const ok = user && (await bcrypt.compare(password, user.password))
-    if (!ok) return fail(res, 401, 'INVALID_CREDENTIALS', 'Incorrect email or password.')   // same message either way
+    if (!ok) return fail(res, 401, 'INVALID_CREDENTIALS', 'Incorrect email or password.')   
     res.json({ data: { user: publicUser(user), token: signToken(user) } })
   } catch (err) { next(err) }
 })
 
-/* ============================ POST /api/projects ============================
-   Header: Authorization: Bearer <token>
-   JSON: { title, description, tech: "React, Figma", price, demo, code, link }  */
+
 router.post('/projects', requireAuth, async (req, res, next) => {
   try {
     const b = req.body || {}
@@ -199,6 +185,7 @@ router.post('/projects', requireAuth, async (req, res, next) => {
     const description = str(b.description)
     const price = str(b.price) || 'Free'
     const demo = str(b.demo)
+    const image=str(b.image)
     const code = str(b.code)
     const link = str(b.link)
     const tech = (Array.isArray(b.tech) ? b.tech : str(b.tech).split(','))
@@ -215,7 +202,7 @@ router.post('/projects', requireAuth, async (req, res, next) => {
     if (Object.keys(fields).length) return fail(res, 400, 'VALIDATION_ERROR', 'Please fix the highlighted fields.', fields)
 
     const project = await Project.create({
-      owner: req.user._id, title, description, price,
+      owner: req.user._id, title, description, price,image,
       techstack: tech.join(', '),
       livedemo: demo, code, link,
     })
