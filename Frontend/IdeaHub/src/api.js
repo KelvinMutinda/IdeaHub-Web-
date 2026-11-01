@@ -1,39 +1,46 @@
-
+                                   
 const API_URL = import.meta.env.VITE_API_URL || 'https://ideahub-web.onrender.com/api'
 
 export class ApiError extends Error {
   constructor(message, status = 0, fields = null) {
     super(message)
     this.status = status
-    this.fields = fields        
+    this.fields = fields       
   }
 }
 
 
-export const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token')
+const SESSION_MS = 2 * 24 * 60 * 60 * 1000          
+const read = (k) => localStorage.getItem(k) || sessionStorage.getItem(k)
+
+export const getToken = () => read('token')
 
 export function saveSession({ token, user }, remember = true) {
   clearSession()
-  const store = remember ? localStorage : sessionStorage    
+  const store = remember ? localStorage : sessionStorage   
   store.setItem('token', token)
   store.setItem('user', JSON.stringify(user))
+  store.setItem('expiresAt', String(Date.now() + SESSION_MS))
 }
 
 
 export const getUser = () => {
-  try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null') } catch { return null }
+  try { return JSON.parse(read('user') || 'null') } catch { return null }
 }
 
 
 export const getSession = () => {
   const token = getToken()
-  return token ? { token, user: getUser() } : null
+  if (!token) return null
+  const expiresAt = Number(read('expiresAt')) || Date.now() + SESSION_MS  
+  if (expiresAt <= Date.now()) { clearSession(); return null }
+  return { token, user: getUser(), expiresAt }
 }
 
-export const isAuthenticated = () => !!getToken()
+export const isAuthenticated = () => !!getSession()
 
 export function clearSession() {
-  ;['token', 'user'].forEach((k) => { localStorage.removeItem(k); sessionStorage.removeItem(k) })
+  ;['token', 'user', 'expiresAt'].forEach((k) => { localStorage.removeItem(k); sessionStorage.removeItem(k) })
 }
 
 
@@ -57,11 +64,18 @@ export async function api(path, { method = 'GET', body, auth = false } = {}) {
 
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
+  
+    if (res.status === 401 && auth) {
+      clearSession()
+      window.dispatchEvent(new Event('auth:logout'))    
+    }
     throw new ApiError(json?.error?.message || 'Something went wrong. Please try again.', res.status, json?.error?.fields)
   }
   return json.data
 }
 
-
+/* ---------- uploaded files ----------
+   The server stores paths like "/uploads/ab12.jpg". The browser needs the full address,
+   which is the API address without the trailing "/api". */
 const FILES_ORIGIN = API_URL.replace(/\/api\/?$/, '')
 export const assetUrl = (p) => (!p ? '' : /^https?:\/\//i.test(p) ? p : FILES_ORIGIN + p)

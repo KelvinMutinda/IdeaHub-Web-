@@ -15,7 +15,7 @@ const router = express.Router()
 const User = require('../models/register')
 const Project = require('../models/post')
 
-/* ============================ HELPERS ============================ */
+
 const str = (v) => (typeof v === 'string' ? v.trim() : '')
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 const isUrl = (v) => {
@@ -36,13 +36,12 @@ const publicUser = (u) => ({
   profileUrl: u.profile,
 })
 
-/* the card shape the front end expects */
+
 const mediaOf = (p) => {
   const images = Array.isArray(p.images) && p.images.length ? p.images : (p.image ? [p.image] : [])
   return { images, image: images[0] || '', video: p.video || '' }
 }
 
-/* viewerId = the logged-in user (or undefined) so we can tell "did I like it?" */
 const shapeProject = (p, owner, viewerId) => ({
   id: p._id,
   author: {
@@ -79,7 +78,7 @@ const removeFiles = (files) => {
   Object.values(files || {}).flat().forEach((f) => fs.unlink(f.path, () => {}))
 }
 
-/* ============================ UPLOADS ============================ */
+
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads')
 fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 
@@ -102,7 +101,7 @@ const storage = multer.diskStorage({
     cb(null, crypto.randomBytes(16).toString('hex') + path.extname(file.originalname).toLowerCase()),
 })
 
-/* register: profile picture + resume */
+
 const upload = multer({
   storage,
   limits: { fileSize: 5 * MB, files: 2 },
@@ -176,7 +175,6 @@ const requireAuth = async (req, res, next) => {
   }
 }
 
-/* logged in OR not: used by the public feed so it can still show "liked by me" */
 const optionalAuth = async (req, res, next) => {
   const token = tokenOf(req)
   if (token) {
@@ -188,7 +186,7 @@ const optionalAuth = async (req, res, next) => {
   next()
 }
 
-/* ============================ POST /api/register ============================ */
+
 router.post('/register', handleUpload, async (req, res, next) => {
   try {
     const b = req.body || {}
@@ -238,7 +236,6 @@ router.post('/register', handleUpload, async (req, res, next) => {
   }
 })
 
-/* ============================ POST /api/login ============================ */
 router.post('/login', async (req, res, next) => {
   try {
     const email = str(req.body?.email).toLowerCase()
@@ -250,9 +247,6 @@ router.post('/login', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-/* ============================ POST /api/projects ============================
-   multipart/form-data: title, description, tech, price, demo, code, link,
-   images (up to 4 files), video (1 file)                                       */
 router.post('/projects', requireAuth, handleProjectUpload, async (req, res, next) => {
   try {
     const b = req.body || {}
@@ -278,7 +272,7 @@ router.post('/projects', requireAuth, handleProjectUpload, async (req, res, next
     if (link && !isUrl(link)) fields.link = 'Enter a valid link starting with http:// or https://'
     if (imageFiles.some((f) => f.size > MAX_IMAGE_BYTES)) fields.images = 'Each photo must be 5 MB or smaller.'
     if (Object.keys(fields).length) {
-      removeFiles(req.files)           // don't leave rejected uploads on disk
+      removeFiles(req.files)           
       return fail(res, 400, 'VALIDATION_ERROR', 'Please fix the highlighted fields.', fields)
     }
 
@@ -296,8 +290,7 @@ router.post('/projects', requireAuth, handleProjectUpload, async (req, res, next
   }
 })
 
-/* ============================ GET /api/projects ============================
-   Public. Send the token too and each card knows whether YOU liked it.        */
+
 router.get('/projects', optionalAuth, async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1)
@@ -313,8 +306,7 @@ router.get('/projects', optionalAuth, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-/* ============================ LIKES ============================
-   POST /api/projects/:id/like  → toggles your like. Returns { liked, likes }  */
+
 router.post('/projects/:id/like', requireAuth, async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Project not found.')
@@ -333,9 +325,6 @@ router.post('/projects/:id/like', requireAuth, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-/* ============================ COMMENTS ============================
-   GET  /api/projects/:id/comments → list (oldest first)
-   POST /api/projects/:id/comments  { text } → adds one (login needed)         */
 router.get('/projects/:id/comments', async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Project not found.')
@@ -362,6 +351,12 @@ router.post('/projects/:id/comments', requireAuth, async (req, res, next) => {
     const created = updated.comments[updated.comments.length - 1]
     res.status(201).json({ data: { comment: shapeComment(created, req.user), total: updated.comments.length } })
   } catch (err) { next(err) }
+})
+
+/* ============================ GET /api/users/me ============================
+   Who am I? (the layout asks this to show your name and avatar)               */
+router.get('/users/me', requireAuth, (req, res) => {
+  res.json({ data: publicUser(req.user) })
 })
 
 /* ============================ GET /api/users ============================
