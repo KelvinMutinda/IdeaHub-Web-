@@ -1,5 +1,5 @@
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://https://ideahub-web.onrender.com/api'
+const API_URL = import.meta.env.VITE_API_URL || 'https://ideahub-web.onrender.com/api'
 
 export class ApiError extends Error {
   constructor(message, status = 0, fields = null) {
@@ -9,6 +9,7 @@ export class ApiError extends Error {
   }
 }
 
+
 export const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token')
 
 export function saveSession({ token, user }, remember = true) {
@@ -17,6 +18,19 @@ export function saveSession({ token, user }, remember = true) {
   store.setItem('token', token)
   store.setItem('user', JSON.stringify(user))
 }
+
+
+export const getUser = () => {
+  try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null') } catch { return null }
+}
+
+
+export const getSession = () => {
+  const token = getToken()
+  return token ? { token, user: getUser() } : null
+}
+
+export const isAuthenticated = () => !!getToken()
 
 export function clearSession() {
   ;['token', 'user'].forEach((k) => { localStorage.removeItem(k); sessionStorage.removeItem(k) })
@@ -47,6 +61,7 @@ export async function api(path, { method = 'GET', body, auth = false } = {}) {
   }
   return json.data
 }
+
 
 const FILES_ORIGIN = API_URL.replace(/\/api\/?$/, '')
 export const assetUrl = (p) => (!p ? '' : /^https?:\/\//i.test(p) ? p : FILES_ORIGIN + p)
