@@ -14,9 +14,7 @@ const tabs = [
 const emptyForm = { title: '', description: '', tech: '', price: '', demo: '', code: '', link: '' }
 const WAVE = [30, 55, 40, 70, 35, 80, 50, 65, 30, 75, 45, 60, 38, 72, 48, 66, 32, 58, 42, 68, 36, 54, 46, 62, 34]
 
-/* ------------------------------------------------------------------
-   Cover art for each feed card (drawn with CSS, see home.css)
-------------------------------------------------------------------- */
+/
 function FeedArt({ art }) {
   if (art.variant === 'orbit') {
     return (
@@ -72,14 +70,14 @@ export default function Home() {
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  /* ---------- load projects + people from the database ---------- */
+ 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         const [postsData, peopleData] = await Promise.all([
           api('/projects', { auth: true }),
-          api('/users?limit=3', { auth: true }).catch(() => []),   // people list is optional
+          api('/users?limit=3', { auth: true }).catch(() => []),  
         ])
         if (cancelled) return
         setFeed(listOf(postsData, 'posts').map(shapePost))
@@ -102,7 +100,7 @@ export default function Home() {
       return next
     })
 
-  /* Like: update the screen right away, tell the server, undo if it fails */
+  
   const flipLike = (id) =>
     setFeed((list) =>
       list.map((p) => (p.id === id ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) } : p))
@@ -143,6 +141,7 @@ export default function Home() {
           tech: form.tech.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 4),
           price: form.price.trim(),
           demo: form.demo.trim(),
+          image:form.image.trim(),
           code: form.code.trim(),
           link: form.link.trim(),
         },
@@ -162,7 +161,7 @@ export default function Home() {
 
   return (
     <div className="home">
-      {/* ───────────── feed column ───────────── */}
+    
       <section className="home__main">
         <p className="home__date"><Sparkles size={14} aria-hidden="true" /> {today} <span aria-hidden="true">·</span> A good day to make</p>
         <h1 className="home__title">A little inspiration,<br />a lot of possibility.</h1>
@@ -244,7 +243,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ───────────── right column ───────────── */}
+    
       <aside className="home__aside">
         <section className="post">
           <div className="post__head">
@@ -277,7 +276,11 @@ export default function Home() {
               </div>
               <div className="field">
                 <label htmlFor="p-demo">Live demo</label>
-                <input id="p-demo" name="demo" value={form.demo} onChange={onField} placeholder="https://" />
+                <input type="file" id="p-demo" name="demo" value={form.demo} onChange={onField} placeholder="https://" />
+              </div>
+              <div className="field">
+                <label htmlFor="p-demo">Project Photos</label>
+                <input type="file" id="p-demo" name="demo" value={form.image} onChange={onField} placeholder="https://" />
               </div>
             </div>
             <div className="field-row">
