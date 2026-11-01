@@ -22,7 +22,7 @@ export function clearSession() {
   ;['token', 'user'].forEach((k) => { localStorage.removeItem(k); sessionStorage.removeItem(k) })
 }
 
-/
+
 export async function api(path, { method = 'GET', body, auth = false } = {}) {
   const headers = {}
   let payload
