@@ -57,23 +57,149 @@ const toCard = (p) => ({
 })
 
 /* ---------- photos + video on a feed card ---------- */
+/* ---------- photos + video on a feed card (Facebook-style) ---------- */
 function Media({ post }) {
   const [i, setI] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const videoRef = useRef(null)
+
   const slides = [
     ...(post.video ? [{ type: 'video', src: assetUrl(post.video) }] : []),
     ...post.images.map((src) => ({ type: 'image', src: assetUrl(src) })),
   ]
 
-  /* nothing uploaded: show a soft placeholder with the project's first letter */
+  /* nothing uploaded: soft placeholder */
   if (!slides.length) {
     return (
       <div className="media media--empty" aria-hidden="true">
-        <Sparkles size={26} />
+        <div className="media__empty-icon">
+          <Sparkles size={28} />
+        </div>
         <span>{post.title.slice(0, 1).toUpperCase()}</span>
       </div>
     )
   }
 
+  const cur = slides[Math.min(i, slides.length - 1)]
+  const hasMultiple = slides.length > 1
+
+  const go = (dir) => {
+    setPlaying(false)
+    setI((prev) => {
+      const next = prev + dir
+      if (next < 0) return slides.length - 1
+      if (next >= slides.length) return 0
+      return next
+    })
+  }
+
+  return (
+    <div className="media">
+      <div className="media__main">
+        {cur.type === 'video' ? (
+          <div className="media__video-wrap">
+            <video
+              ref={videoRef}
+              key={cur.src}
+              src={cur.src}
+              playsInline
+              preload="metadata"
+              controls={playing}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onClick={() => {
+                if (!playing && videoRef.current) {
+                  videoRef.current.play()
+                }
+              }}
+            />
+            {!playing && (
+              <button
+                type="button"
+                className="media__play-btn"
+                onClick={() => videoRef.current?.play()}
+                aria-label="Play video"
+              >
+                <Play size={28} fill="currentColor" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <img
+            key={cur.src}
+            src={cur.src}
+            alt={`${post.title} – photo ${i + 1}`}
+            loading="lazy"
+          />
+        )}
+
+        {/* Facebook-style arrows (only when multiple) */}
+        {hasMultiple && (
+          <>
+            <button
+              type="button"
+              className="media__nav media__nav--prev"
+              onClick={() => go(-1)}
+              aria-label="Previous"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="media__nav media__nav--next"
+              onClick={() => go(1)}
+              aria-label="Next"
+            >
+              ›
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Dots indicator (Facebook style) */}
+      {hasMultiple && (
+        <div className="media__dots">
+          {slides.map((_, n) => (
+            <button
+              key={n}
+              type="button"
+              className={'media__dot' + (n === i ? ' is-active' : '')}
+              onClick={() => {
+                setPlaying(false)
+                setI(n)
+              }}
+              aria-label={`Go to item ${n + 1}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Optional small thumbnail strip (can remove if you prefer only dots) */}
+      {hasMultiple && slides.length <= 6 && (
+        <div className="media__thumbs">
+          {slides.map((s, n) => (
+            <button
+              key={s.src}
+              type="button"
+              className={'media__thumb' + (n === i ? ' is-active' : '')}
+              onClick={() => {
+                setPlaying(false)
+                setI(n)
+              }}
+              aria-label={s.type === 'video' ? 'Show video' : `Show photo ${n + 1}`}
+            >
+              {s.type === 'video' ? (
+                <span className="media__play"><Play size={12} /></span>
+              ) : (
+                <img src={s.src} alt="" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
   const cur = slides[Math.min(i, slides.length - 1)]
   return (
     <div className="media">
