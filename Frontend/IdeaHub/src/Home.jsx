@@ -6,10 +6,9 @@ import {
 } from 'lucide-react'
 import { api, assetUrl, getToken } from './api'
 
-
 const TONES = ['sand', 'sage', 'rose']
 
-/* filters: each one decides which projects to keep */
+/* filters */
 const tabs = [
   { id: 'all', label: 'All projects', match: () => true },
   { id: 'open', label: 'Open source', match: (p) => !!p.code },
@@ -18,7 +17,7 @@ const tabs = [
 
 const emptyForm = { title: '', description: '', tech: '', price: '', demo: '', code: '', link: '' }
 
-/* upload limits (the server enforces the same ones) */
+/* upload limits */
 const MB = 1024 * 1024
 const MAX_PHOTOS = 4
 const MAX_PHOTO_MB = 5
@@ -26,7 +25,7 @@ const MAX_VIDEO_MB = 50
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
 
-/* ---------- small helpers ---------- */
+/* ---------- helpers ---------- */
 function timeAgo(iso) {
   const s = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
   if (s < 60) return 'just now'
@@ -38,7 +37,6 @@ function timeAgo(iso) {
   return d < 7 ? `${d} d ago` : new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-/* the server's project → exactly what the cards use (fills any gaps with safe defaults) */
 const toCard = (p) => ({
   id: p.id,
   author: p.author || { name: 'Unknown', initials: '?', role: 'Maker' },
@@ -56,8 +54,7 @@ const toCard = (p) => ({
   createdAt: p.createdAt,
 })
 
-/* ---------- photos + video on a feed card ---------- */
-/* ---------- photos + video on a feed card (Facebook-style) ---------- */
+/* ---------- Facebook-style Media ---------- */
 function Media({ post }) {
   const [i, setI] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -68,7 +65,6 @@ function Media({ post }) {
     ...post.images.map((src) => ({ type: 'image', src: assetUrl(src) })),
   ]
 
-  /* nothing uploaded: soft placeholder */
   if (!slides.length) {
     return (
       <div className="media media--empty" aria-hidden="true">
@@ -133,7 +129,6 @@ function Media({ post }) {
           />
         )}
 
-        {/* Facebook-style arrows (only when multiple) */}
         {hasMultiple && (
           <>
             <button
@@ -156,7 +151,6 @@ function Media({ post }) {
         )}
       </div>
 
-      {/* Dots indicator (Facebook style) */}
       {hasMultiple && (
         <div className="media__dots">
           {slides.map((_, n) => (
@@ -174,7 +168,6 @@ function Media({ post }) {
         </div>
       )}
 
-      {/* Optional small thumbnail strip (can remove if you prefer only dots) */}
       {hasMultiple && slides.length <= 6 && (
         <div className="media__thumbs">
           {slides.map((s, n) => (
@@ -200,37 +193,8 @@ function Media({ post }) {
     </div>
   )
 }
-  const cur = slides[Math.min(i, slides.length - 1)]
-  return (
-    <div className="media">
-      <div className="media__main">
-        {cur.type === 'video' ? (
-          <video key={cur.src} src={cur.src} controls playsInline preload="metadata" />
-        ) : (
-          <img key={cur.src} src={cur.src} alt={`${post.title}, photo`} loading="lazy" />
-        )}
-      </div>
 
-      {/* thumbnails appear only when there is more than one item */}
-      {slides.length > 1 && (
-        <div className="media__thumbs">
-          {slides.map((s, n) => (
-            <button
-              key={s.src} type="button"
-              className={'media__thumb' + (n === i ? ' is-active' : '')}
-              onClick={() => setI(n)}
-              aria-label={s.type === 'video' ? 'Show video' : `Show photo ${n}`}
-            >
-              {s.type === 'video' ? <span className="media__play"><Play size={14} /></span> : <img src={s.src} alt="" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ---------- comments under a card (loaded when opened) ---------- */
+/* ---------- Comments ---------- */
 function Comments({ postId, onCount }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -271,7 +235,6 @@ function Comments({ postId, onCount }) {
       {loading && <p className="cmt__note">Loading comments…</p>}
       {!loading && items.length === 0 && !error && <p className="cmt__note">No comments yet. Say something kind.</p>}
       {error && <p className="cmt__note cmt__note--err" role="alert">{error}</p>}
-
       <ul className="cmt__list">
         {items.map((c) => (
           <li key={c.id} className="cmt__item">
@@ -283,13 +246,17 @@ function Comments({ postId, onCount }) {
           </li>
         ))}
       </ul>
-
       <form className="cmt__form" onSubmit={send}>
         <input
-          value={text} onChange={(e) => setText(e.target.value)}
-          placeholder="Write a comment…" maxLength={500} aria-label="Write a comment"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write a comment…"
+          maxLength={500}
+          aria-label="Write a comment"
         />
-        <button type="submit" disabled={sending || !text.trim()} aria-label="Send comment"><Send size={15} /></button>
+        <button type="submit" disabled={sending || !text.trim()} aria-label="Send comment">
+          <Send size={15} />
+        </button>
       </form>
     </div>
   )
@@ -304,25 +271,23 @@ export default function Home() {
   const [tab, setTab] = useState('all')
   const [saved, setSaved] = useState(() => new Set())
   const [following, setFollowing] = useState(() => new Set())
-  const [openComments, setOpenComments] = useState(() => new Set())   // which cards show their comments
-
+  const [openComments, setOpenComments] = useState(() => new Set())
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
-  const [photos, setPhotos] = useState([])        // [{ file, url }]  url = local preview
-  const [video, setVideo] = useState(null)        // { file, url } | null
+  const [photos, setPhotos] = useState([])
+  const [video, setVideo] = useState(null)
   const [posting, setPosting] = useState(false)
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  /* free the preview URLs when the page closes (browsers keep them in memory otherwise) */
   const live = useRef({ photos: [], video: null })
   live.current = { photos, video }
+
   useEffect(() => () => {
     live.current.photos.forEach((p) => URL.revokeObjectURL(p.url))
     if (live.current.video) URL.revokeObjectURL(live.current.video.url)
   }, [])
 
-  /* load the feed and "people to know" once */
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -352,7 +317,6 @@ export default function Home() {
       return next
     })
 
-  /* ---------- likes: change the heart instantly, then confirm with the server ---------- */
   const flipLike = (id) =>
     setFeed((list) =>
       list.map((p) => (p.id === id ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) } : p))
@@ -365,7 +329,7 @@ export default function Home() {
       const r = await api(`/projects/${id}/like`, { method: 'POST', auth: true })
       setFeed((list) => list.map((p) => (p.id === id ? { ...p, likedByMe: r.liked, likes: r.likes } : p)))
     } catch (err) {
-      flipLike(id)                    // the server said no: put it back
+      flipLike(id)
       toast.error(err.message)
     }
   }
@@ -373,10 +337,8 @@ export default function Home() {
   const setCommentCount = (id, n) =>
     setFeed((list) => list.map((p) => (p.id === id ? { ...p, comments: n } : p)))
 
-  /* follow is stored only on this device for now (the server has no follow endpoint yet) */
   const onFollow = (id) => toggleSet(setFollowing, id)
 
-  /* ---------- the form ---------- */
   const onField = (e) => {
     const { name, value } = e.target
     setForm((f) => ({ ...f, [name]: value }))
@@ -385,7 +347,7 @@ export default function Home() {
 
   const onPhotos = (e) => {
     const picked = Array.from(e.target.files || [])
-    e.target.value = ''                          // lets you pick the same file again later
+    e.target.value = ''
     const room = MAX_PHOTOS - photos.length
     const good = []
     for (const f of picked) {
@@ -420,7 +382,10 @@ export default function Home() {
   const resetForm = () => {
     photos.forEach((p) => URL.revokeObjectURL(p.url))
     if (video) URL.revokeObjectURL(video.url)
-    setPhotos([]); setVideo(null); setForm(emptyForm); setErrors({})
+    setPhotos([])
+    setVideo(null)
+    setForm(emptyForm)
+    setErrors({})
   }
 
   const onSubmit = async (e) => {
@@ -429,7 +394,6 @@ export default function Home() {
     if (!getToken()) return toast.error('Log in to post a project.')
     if (form.title.trim().length < 3) return setErrors({ title: 'Give your project a title (3+ characters).' })
 
-    /* files can't travel as JSON, so everything goes as FormData */
     const body = new FormData()
     Object.entries(form).forEach(([k, v]) => body.append(k, v.trim()))
     photos.forEach((p) => body.append('images', p.file))
@@ -457,9 +421,10 @@ export default function Home() {
     <div className="home">
       <Toaster position="top-right" />
 
-      {/* ============ feed ============ */}
       <section className="home__main">
-        <p className="home__date"><Sparkles size={14} aria-hidden="true" /> {today} <span aria-hidden="true">·</span> A good day to make</p>
+        <p className="home__date">
+          <Sparkles size={14} aria-hidden="true" /> {today} <span aria-hidden="true">·</span> A good day to make
+        </p>
         <h1 className="home__title">A little inspiration,<br />a lot of possibility.</h1>
         <p className="home__sub">See what people are making. Find your people. Put your idea out there.</p>
 
@@ -467,19 +432,26 @@ export default function Home() {
           <div className="chips" role="group" aria-label="Filter projects">
             {tabs.map((t) => (
               <button
-                key={t.id} type="button"
+                key={t.id}
+                type="button"
                 className={'chip' + (t.id === tab ? ' is-active' : '')}
                 aria-pressed={t.id === tab}
                 onClick={() => setTab(t.id)}
-              >{t.label}</button>
+              >
+                {t.label}
+              </button>
             ))}
           </div>
-          <span className="home__curated"><ArrowDownWideNarrow size={13} aria-hidden="true" /> Newest first</span>
+          <span className="home__curated">
+            <ArrowDownWideNarrow size={13} aria-hidden="true" /> Newest first
+          </span>
         </div>
 
         <div className="home__section">
           <h2>Projects worth a closer look</h2>
-          <span className="home__count"><i aria-hidden="true" /> {visible.length} {visible.length === 1 ? 'project' : 'projects'}</span>
+          <span className="home__count">
+            <i aria-hidden="true" /> {visible.length} {visible.length === 1 ? 'project' : 'projects'}
+          </span>
         </div>
 
         <div className="feed">
@@ -501,8 +473,11 @@ export default function Home() {
 
                 <h3 className="fcard__title">{p.title}</h3>
                 <p className="fcard__desc">{p.description}</p>
+
                 <ul className="tags">
-                  {p.tags.map((t) => <li key={t} className="tag">{t}</li>)}
+                  {p.tags.map((t) => (
+                    <li key={t} className="tag">{t}</li>
+                  ))}
                 </ul>
 
                 <footer className="fcard__foot">
@@ -539,22 +514,26 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {(p.demo || p.link) ? (
+                  {(p.demo || p.link) && (
                     <a className="fcard__meet" href={p.demo || p.link} target="_blank" rel="noreferrer">
                       Meet the project <ArrowUpRight size={14} aria-hidden="true" />
                     </a>
-                  ) : null}
+                  )}
                 </footer>
 
-                {openComments.has(p.id) && <Comments postId={p.id} onCount={(n) => setCommentCount(p.id, n)} />}
+                {openComments.has(p.id) && (
+                  <Comments postId={p.id} onCount={(n) => setCommentCount(p.id, n)} />
+                )}
               </div>
             </article>
           ))}
-          {!loading && !loadError && visible.length === 0 && <p className="empty">Nothing here yet. Try another filter.</p>}
+
+          {!loading && !loadError && visible.length === 0 && (
+            <p className="empty">Nothing here yet. Try another filter.</p>
+          )}
         </div>
       </section>
 
-      {/* ============ side panel ============ */}
       <aside className="home__aside">
         <section className="post">
           <div className="post__head">
@@ -569,29 +548,51 @@ export default function Home() {
           <form onSubmit={onSubmit} className="post__form" noValidate>
             <div className="field">
               <label htmlFor="p-title">Title</label>
-              <input id="p-title" name="title" value={form.title} onChange={onField} placeholder="eg. A Smart School Web Portal" className={errors.title ? 'input-invalid' : ''} />
+              <input
+                id="p-title"
+                name="title"
+                value={form.title}
+                onChange={onField}
+                placeholder="eg. A Smart School Web Portal"
+                className={errors.title ? 'input-invalid' : ''}
+              />
               {fieldErr('title')}
             </div>
+
             <div className="field">
               <label htmlFor="p-desc">Project description</label>
-              <textarea id="p-desc" name="description" value={form.description} onChange={onField} placeholder="What does it do, and who is it for?" />
+              <textarea
+                id="p-desc"
+                name="description"
+                value={form.description}
+                onChange={onField}
+                placeholder="What does it do, and who is it for?"
+              />
               {fieldErr('description')}
             </div>
+
             <div className="field">
               <label htmlFor="p-tech">Tech stack</label>
-              <input id="p-tech" name="tech" value={form.tech} onChange={onField} placeholder="React, Node, MongoDB" />
+              <input
+                id="p-tech"
+                name="tech"
+                value={form.tech}
+                onChange={onField}
+                placeholder="React, Node, MongoDB"
+              />
               <small>Separate items with commas</small>
               {fieldErr('tech')}
             </div>
 
-            {/* ----- photos with preview ----- */}
             <div className="field">
               <label>Project photos <small>(up to {MAX_PHOTOS}, {MAX_PHOTO_MB} MB each)</small></label>
               <div className="upl__grid">
                 {photos.map((p) => (
                   <div key={p.url} className="upl__item">
                     <img src={p.url} alt="Selected photo preview" />
-                    <button type="button" className="upl__remove" onClick={() => removePhoto(p.url)} aria-label="Remove photo"><X size={14} /></button>
+                    <button type="button" className="upl__remove" onClick={() => removePhoto(p.url)} aria-label="Remove photo">
+                      <X size={14} />
+                    </button>
                   </div>
                 ))}
                 {photos.length < MAX_PHOTOS && (
@@ -605,13 +606,14 @@ export default function Home() {
               {fieldErr('images')}
             </div>
 
-            {/* ----- demo video with preview ----- */}
             <div className="field">
               <label>Demo video <small>(MP4, WebM or MOV, up to {MAX_VIDEO_MB} MB)</small></label>
               {video ? (
                 <div className="upl__video">
                   <video src={video.url} controls playsInline muted preload="metadata" />
-                  <button type="button" className="upl__remove" onClick={removeVideo} aria-label="Remove video"><X size={14} /></button>
+                  <button type="button" className="upl__remove" onClick={removeVideo} aria-label="Remove video">
+                    <X size={14} />
+                  </button>
                 </div>
               ) : (
                 <label className="upl__add upl__add--wide" htmlFor="p-video">
@@ -634,6 +636,7 @@ export default function Home() {
                 {fieldErr('demo')}
               </div>
             </div>
+
             <div className="field-row">
               <div className="field">
                 <label htmlFor="p-code">Code</label>
@@ -671,7 +674,9 @@ export default function Home() {
                   className={'btn btn--outline' + (following.has(p.id) ? ' is-saved' : '')}
                   aria-pressed={following.has(p.id)}
                   onClick={() => onFollow(p.id)}
-                >{following.has(p.id) ? 'Following' : 'Follow'}</button>
+                >
+                  {following.has(p.id) ? 'Following' : 'Follow'}
+                </button>
               </li>
             ))}
           </ul>
